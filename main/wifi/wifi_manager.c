@@ -44,6 +44,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "Connected! IP: %s", s_ip_str);
         s_retry_count = 0;
         s_connected = true;
+
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
 }

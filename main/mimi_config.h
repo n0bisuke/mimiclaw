@@ -52,8 +52,11 @@
 #define MIMI_AGENT_MAX_TOOL_ITER     10
 #define MIMI_MAX_TOOL_CALLS          4
 
+/* Timezone (POSIX TZ format) */
+#define MIMI_TIMEZONE                "PST8PDT,M3.2.0,M11.1.0"
+
 /* LLM */
-#define MIMI_LLM_DEFAULT_MODEL       "claude-opus-4-6"
+#define MIMI_LLM_DEFAULT_MODEL       "claude-opus-4-5"
 #define MIMI_LLM_MAX_TOKENS          4096
 #define MIMI_LLM_API_URL             "https://api.anthropic.com/v1/messages"
 #define MIMI_LLM_API_VERSION         "2023-06-01"

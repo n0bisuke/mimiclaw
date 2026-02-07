@@ -15,6 +15,7 @@ idf_component_register(
         "proxy/http_proxy.c"
         "tools/tool_registry.c"
         "tools/tool_web_search.c"
+        "tools/tool_get_time.c"
     INCLUDE_DIRS
         "."
     REQUIRES

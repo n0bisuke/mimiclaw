@@ -1,5 +1,6 @@
 #include "tool_registry.h"
 #include "tools/tool_web_search.h"
+#include "tools/tool_get_time.h"
 
 #include <string.h>
 #include "esp_log.h"
@@ -64,6 +65,18 @@ esp_err_t tool_registry_init(void)
         .execute = tool_web_search_execute,
     };
     register_tool(&ws);
+
+    /* Register get_current_time */
+    mimi_tool_t gt = {
+        .name = "get_current_time",
+        .description = "Get the current date and time. Also sets the system clock. Call this when you need to know what time or date it is.",
+        .input_schema_json =
+            "{\"type\":\"object\","
+            "\"properties\":{},"
+            "\"required\":[]}",
+        .execute = tool_get_time_execute,
+    };
+    register_tool(&gt);
 
     build_tools_json();
 
