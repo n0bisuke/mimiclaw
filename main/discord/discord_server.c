@@ -10,6 +10,7 @@
 #include "esp_log.h"
 #include "esp_http_server.h"
 #include "esp_http_client.h"
+#include "esp_crt_bundle.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "cJSON.h"
@@ -136,14 +137,18 @@ static esp_err_t read_body(httpd_req_t *req, char **out, size_t *out_len)
     char *buf = malloc(len + 1);
     if (!buf) return ESP_ERR_NO_MEM;
 
-    int received = httpd_req_recv(req, buf, len);
-    if (received <= 0) {
-        free(buf);
-        return ESP_FAIL;
+    size_t off = 0;
+    while (off < len) {
+        int received = httpd_req_recv(req, buf + off, len - off);
+        if (received <= 0) {
+            free(buf);
+            return ESP_FAIL;
+        }
+        off += (size_t)received;
     }
-    buf[received] = '\0';
+    buf[off] = '\0';
     *out     = buf;
-    *out_len = (size_t)received;
+    *out_len = off;
     return ESP_OK;
 }
 
@@ -253,7 +258,12 @@ static esp_err_t interactions_handler(httpd_req_t *req)
     strncpy(msg.chat_id, user_id,           sizeof(msg.chat_id)-1);
     strncpy(msg.meta,    itoken,            sizeof(msg.meta)-1);
     msg.content = strdup(input_text);
-    if (msg.content) message_bus_push_inbound(&msg);
+    if (msg.content) {
+        if (message_bus_push_inbound(&msg) != ESP_OK) {
+            ESP_LOGW(TAG, "Inbound queue full, dropping Discord message");
+            free(msg.content);
+        }
+    }
 
     cJSON_Delete(root);
     return ESP_OK;

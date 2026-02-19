@@ -88,8 +88,8 @@ ESP-IDF v5.x がインストール・セットアップ済みであればその�
 # ターゲットを ESP32-S3 に設定
 idf.py set-target esp32s3
 
-# ビルド（AtomClaw 専用の sdkconfig を指定）
-idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.esp32s3;sdkconfig.defaults.atomclaw" build
+# ビルド（CMakeLists.txt が AtomClaw 用 sdkconfig を自動で適用）
+idf.py build
 
 # 書き込み＆モニター
 idf.py flash monitor
@@ -101,9 +101,10 @@ idf.py flash monitor
 idf.py -p /dev/cu.usbmodem11401 flash monitor
 ```
 
-> **`-D SDKCONFIG_DEFAULTS` の指定は必須です。**
-> これを省略すると 8MB Flash / PSA Crypto などの AtomClaw 固有設定が適用されず、
-> ビルドエラーまたは実行時に Ed25519 検証が失敗します。
+> MimiClaw をビルドする場合のみ `-DBUILD_MIMICLAW=1` を明示してください:
+> ```bash
+> idf.py -DBUILD_MIMICLAW=1 build
+> ```
 
 ---
 

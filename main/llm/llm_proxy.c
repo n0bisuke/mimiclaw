@@ -270,7 +270,7 @@ static void extract_text_anthropic(cJSON *root, char *buf, size_t size)
     cJSON *block;
     cJSON_ArrayForEach(block, content) {
         cJSON *btype = cJSON_GetObjectItem(block, "type");
-        if (!btype || strcmp(btype->valuestring, "text") != 0) continue;
+        if (!btype || !cJSON_IsString(btype) || strcmp(btype->valuestring, "text") != 0) continue;
         cJSON *text = cJSON_GetObjectItem(block, "text");
         if (!text || !cJSON_IsString(text)) continue;
         size_t tlen = strlen(text->valuestring);
@@ -732,7 +732,7 @@ esp_err_t llm_chat_tools(const char *system_prompt,
             cJSON *block;
             cJSON_ArrayForEach(block, content) {
                 cJSON *btype = cJSON_GetObjectItem(block, "type");
-                if (btype && strcmp(btype->valuestring, "text") == 0) {
+                if (btype && cJSON_IsString(btype) && strcmp(btype->valuestring, "text") == 0) {
                     cJSON *text = cJSON_GetObjectItem(block, "text");
                     if (text && cJSON_IsString(text)) {
                         total_text += strlen(text->valuestring);
@@ -746,7 +746,7 @@ esp_err_t llm_chat_tools(const char *system_prompt,
                 if (resp->text) {
                     cJSON_ArrayForEach(block, content) {
                         cJSON *btype = cJSON_GetObjectItem(block, "type");
-                        if (!btype || strcmp(btype->valuestring, "text") != 0) continue;
+                        if (!btype || !cJSON_IsString(btype) || strcmp(btype->valuestring, "text") != 0) continue;
                         cJSON *text = cJSON_GetObjectItem(block, "text");
                         if (!text || !cJSON_IsString(text)) continue;
                         size_t tlen = strlen(text->valuestring);
@@ -760,7 +760,7 @@ esp_err_t llm_chat_tools(const char *system_prompt,
             /* Extract tool_use blocks */
             cJSON_ArrayForEach(block, content) {
                 cJSON *btype = cJSON_GetObjectItem(block, "type");
-                if (!btype || strcmp(btype->valuestring, "tool_use") != 0) continue;
+                if (!btype || !cJSON_IsString(btype) || strcmp(btype->valuestring, "tool_use") != 0) continue;
                 if (resp->call_count >= MIMI_MAX_TOOL_CALLS) break;
 
                 llm_tool_call_t *call = &resp->calls[resp->call_count];

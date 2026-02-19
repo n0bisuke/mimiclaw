@@ -1,12 +1,17 @@
 #include "serial_cli.h"
-#include "mimi_config.h"
 #include "wifi/wifi_manager.h"
-#include "telegram/telegram_bot.h"
 #include "llm/llm_proxy.h"
 #include "memory/memory_store.h"
-#include "memory/session_mgr.h"
 #include "proxy/http_proxy.h"
 #include "tools/tool_web_search.h"
+#if CONFIG_DEVICE_ATOMCLAW
+#include "atom_config.h"
+#include "memory/atom_session.h"
+#else
+#include "mimi_config.h"
+#include "telegram/telegram_bot.h"
+#include "memory/session_mgr.h"
+#endif
 
 #include <string.h>
 #include <stdio.h>
@@ -19,6 +24,54 @@
 #include "argtable3/argtable3.h"
 
 static const char *TAG = "cli";
+
+#if CONFIG_DEVICE_ATOMCLAW
+#define CFG_PROMPT               "atom> "
+#define CFG_NVS_WIFI             ATOM_NVS_WIFI
+#define CFG_NVS_LLM              ATOM_NVS_LLM
+#define CFG_NVS_PROXY            ATOM_NVS_PROXY
+#define CFG_NVS_SEARCH           ATOM_NVS_SEARCH
+#define CFG_NVS_KEY_SSID         ATOM_NVS_KEY_SSID
+#define CFG_NVS_KEY_PASS         ATOM_NVS_KEY_PASS
+#define CFG_NVS_KEY_API_KEY      ATOM_NVS_KEY_API_KEY
+#define CFG_NVS_KEY_MODEL        ATOM_NVS_KEY_MODEL
+#define CFG_NVS_KEY_PROVIDER     ATOM_NVS_KEY_PROVIDER
+#define CFG_NVS_KEY_PROXY_HOST   ATOM_NVS_KEY_PROXY_HOST
+#define CFG_NVS_KEY_PROXY_PORT   ATOM_NVS_KEY_PROXY_PORT
+#define CFG_SECRET_WIFI_SSID     ATOM_SECRET_WIFI_SSID
+#define CFG_SECRET_WIFI_PASS     ATOM_SECRET_WIFI_PASS
+#define CFG_SECRET_API_KEY       ATOM_SECRET_API_KEY
+#define CFG_SECRET_MODEL         ATOM_SECRET_MODEL
+#define CFG_SECRET_PROVIDER      ATOM_SECRET_MODEL_PROVIDER
+#define CFG_SECRET_PROXY_HOST    ATOM_SECRET_PROXY_HOST
+#define CFG_SECRET_PROXY_PORT    ATOM_SECRET_PROXY_PORT
+#define CFG_SECRET_SEARCH_KEY    ATOM_SECRET_SEARCH_KEY
+#define CFG_LLM_DEFAULT_MODEL    ATOM_LLM_DEFAULT_MODEL
+#define CFG_LLM_DEFAULT_PROVIDER ATOM_LLM_PROVIDER_DEFAULT
+#else
+#define CFG_PROMPT               "mimi> "
+#define CFG_NVS_WIFI             MIMI_NVS_WIFI
+#define CFG_NVS_LLM              MIMI_NVS_LLM
+#define CFG_NVS_PROXY            MIMI_NVS_PROXY
+#define CFG_NVS_SEARCH           MIMI_NVS_SEARCH
+#define CFG_NVS_KEY_SSID         MIMI_NVS_KEY_SSID
+#define CFG_NVS_KEY_PASS         MIMI_NVS_KEY_PASS
+#define CFG_NVS_KEY_API_KEY      MIMI_NVS_KEY_API_KEY
+#define CFG_NVS_KEY_MODEL        MIMI_NVS_KEY_MODEL
+#define CFG_NVS_KEY_PROVIDER     MIMI_NVS_KEY_PROVIDER
+#define CFG_NVS_KEY_PROXY_HOST   MIMI_NVS_KEY_PROXY_HOST
+#define CFG_NVS_KEY_PROXY_PORT   MIMI_NVS_KEY_PROXY_PORT
+#define CFG_SECRET_WIFI_SSID     MIMI_SECRET_WIFI_SSID
+#define CFG_SECRET_WIFI_PASS     MIMI_SECRET_WIFI_PASS
+#define CFG_SECRET_API_KEY       MIMI_SECRET_API_KEY
+#define CFG_SECRET_MODEL         MIMI_SECRET_MODEL
+#define CFG_SECRET_PROVIDER      MIMI_SECRET_MODEL_PROVIDER
+#define CFG_SECRET_PROXY_HOST    MIMI_SECRET_PROXY_HOST
+#define CFG_SECRET_PROXY_PORT    MIMI_SECRET_PROXY_PORT
+#define CFG_SECRET_SEARCH_KEY    MIMI_SECRET_SEARCH_KEY
+#define CFG_LLM_DEFAULT_MODEL    MIMI_LLM_DEFAULT_MODEL
+#define CFG_LLM_DEFAULT_PROVIDER MIMI_LLM_PROVIDER_DEFAULT
+#endif
 
 /* --- wifi_set command --- */
 static struct {
@@ -49,11 +102,15 @@ static int cmd_wifi_status(int argc, char **argv)
 }
 
 /* --- set_tg_token command --- */
+#if !CONFIG_DEVICE_ATOMCLAW
 static struct {
     struct arg_str *token;
     struct arg_end *end;
 } tg_token_args;
+#endif
 
+/* --- set_tg_token command --- */
+#if !CONFIG_DEVICE_ATOMCLAW
 static int cmd_set_tg_token(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&tg_token_args);
@@ -65,6 +122,7 @@ static int cmd_set_tg_token(int argc, char **argv)
     printf("Telegram bot token saved.\n");
     return 0;
 }
+#endif
 
 /* --- set_api_key command --- */
 static struct {
@@ -158,9 +216,16 @@ static int cmd_memory_write(int argc, char **argv)
 /* --- session_list command --- */
 static int cmd_session_list(int argc, char **argv)
 {
+#if CONFIG_DEVICE_ATOMCLAW
+    (void)argc;
+    (void)argv;
+    printf("session_list is not available on AtomClaw.\n");
+    return 1;
+#else
     printf("Sessions:\n");
     session_list();
     return 0;
+#endif
 }
 
 /* --- session_clear command --- */
@@ -176,11 +241,19 @@ static int cmd_session_clear(int argc, char **argv)
         arg_print_errors(stderr, session_clear_args.end, argv[0]);
         return 1;
     }
+#if CONFIG_DEVICE_ATOMCLAW
+    if (atom_session_clear(session_clear_args.chat_id->sval[0]) == ESP_OK) {
+        printf("Session cleared.\n");
+    } else {
+        printf("Session not found.\n");
+    }
+#else
     if (session_clear(session_clear_args.chat_id->sval[0]) == ESP_OK) {
         printf("Session cleared.\n");
     } else {
         printf("Session not found.\n");
     }
+#endif
     return 0;
 }
 
@@ -284,16 +357,20 @@ static void print_config(const char *label, const char *ns, const char *key,
 
 static int cmd_config_show(int argc, char **argv)
 {
+    (void)argc;
+    (void)argv;
     printf("=== Current Configuration ===\n");
-    print_config("WiFi SSID",  MIMI_NVS_WIFI,   MIMI_NVS_KEY_SSID,     MIMI_SECRET_WIFI_SSID,  false);
-    print_config("WiFi Pass",  MIMI_NVS_WIFI,   MIMI_NVS_KEY_PASS,     MIMI_SECRET_WIFI_PASS,  true);
-    print_config("TG Token",   MIMI_NVS_TG,     MIMI_NVS_KEY_TG_TOKEN, MIMI_SECRET_TG_TOKEN,   true);
-    print_config("API Key",    MIMI_NVS_LLM,    MIMI_NVS_KEY_API_KEY,  MIMI_SECRET_API_KEY,    true);
-    print_config("Model",      MIMI_NVS_LLM,    MIMI_NVS_KEY_MODEL,    MIMI_SECRET_MODEL,      false);
-    print_config("Provider",   MIMI_NVS_LLM,    MIMI_NVS_KEY_PROVIDER, MIMI_SECRET_MODEL_PROVIDER, false);
-    print_config("Proxy Host", MIMI_NVS_PROXY,  MIMI_NVS_KEY_PROXY_HOST, MIMI_SECRET_PROXY_HOST, false);
-    print_config("Proxy Port", MIMI_NVS_PROXY,  MIMI_NVS_KEY_PROXY_PORT, MIMI_SECRET_PROXY_PORT, false);
-    print_config("Search Key", MIMI_NVS_SEARCH, MIMI_NVS_KEY_API_KEY,  MIMI_SECRET_SEARCH_KEY, true);
+    print_config("WiFi SSID",  CFG_NVS_WIFI,   CFG_NVS_KEY_SSID,       CFG_SECRET_WIFI_SSID, false);
+    print_config("WiFi Pass",  CFG_NVS_WIFI,   CFG_NVS_KEY_PASS,       CFG_SECRET_WIFI_PASS, true);
+#if !CONFIG_DEVICE_ATOMCLAW
+    print_config("TG Token",   MIMI_NVS_TG,    MIMI_NVS_KEY_TG_TOKEN,  MIMI_SECRET_TG_TOKEN, true);
+#endif
+    print_config("API Key",    CFG_NVS_LLM,    CFG_NVS_KEY_API_KEY,    CFG_SECRET_API_KEY,   true);
+    print_config("Model",      CFG_NVS_LLM,    CFG_NVS_KEY_MODEL,      CFG_SECRET_MODEL,     false);
+    print_config("Provider",   CFG_NVS_LLM,    CFG_NVS_KEY_PROVIDER,   CFG_SECRET_PROVIDER,  false);
+    print_config("Proxy Host", CFG_NVS_PROXY,  CFG_NVS_KEY_PROXY_HOST, CFG_SECRET_PROXY_HOST, false);
+    print_config("Proxy Port", CFG_NVS_PROXY,  CFG_NVS_KEY_PROXY_PORT, CFG_SECRET_PROXY_PORT, false);
+    print_config("Search Key", CFG_NVS_SEARCH, CFG_NVS_KEY_API_KEY,    CFG_SECRET_SEARCH_KEY, true);
     printf("=============================\n");
     return 0;
 }
@@ -301,10 +378,16 @@ static int cmd_config_show(int argc, char **argv)
 /* --- config_reset command --- */
 static int cmd_config_reset(int argc, char **argv)
 {
+    (void)argc;
+    (void)argv;
     const char *namespaces[] = {
-        MIMI_NVS_WIFI, MIMI_NVS_TG, MIMI_NVS_LLM, MIMI_NVS_PROXY, MIMI_NVS_SEARCH
+        CFG_NVS_WIFI, CFG_NVS_LLM, CFG_NVS_PROXY, CFG_NVS_SEARCH
     };
-    for (int i = 0; i < 5; i++) {
+    int ns_count = 4;
+#if !CONFIG_DEVICE_ATOMCLAW
+    const char *tg_ns = MIMI_NVS_TG;
+#endif
+    for (int i = 0; i < ns_count; i++) {
         nvs_handle_t nvs;
         if (nvs_open(namespaces[i], NVS_READWRITE, &nvs) == ESP_OK) {
             nvs_erase_all(nvs);
@@ -312,6 +395,16 @@ static int cmd_config_reset(int argc, char **argv)
             nvs_close(nvs);
         }
     }
+#if !CONFIG_DEVICE_ATOMCLAW
+    {
+        nvs_handle_t nvs;
+        if (nvs_open(tg_ns, NVS_READWRITE, &nvs) == ESP_OK) {
+            nvs_erase_all(nvs);
+            nvs_commit(nvs);
+            nvs_close(nvs);
+        }
+    }
+#endif
     printf("All NVS config cleared. Build-time defaults will be used on restart.\n");
     return 0;
 }
@@ -328,7 +421,7 @@ esp_err_t serial_cli_init(void)
 {
     esp_console_repl_t *repl = NULL;
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-    repl_config.prompt = "mimi> ";
+    repl_config.prompt = CFG_PROMPT;
     repl_config.max_cmdline_length = 256;
 
     /* USB Serial JTAG */
@@ -369,6 +462,7 @@ esp_err_t serial_cli_init(void)
     esp_console_cmd_register(&wifi_scan_cmd);
 
     /* set_tg_token */
+#if !CONFIG_DEVICE_ATOMCLAW
     tg_token_args.token = arg_str1(NULL, NULL, "<token>", "Telegram bot token");
     tg_token_args.end = arg_end(1);
     esp_console_cmd_t tg_token_cmd = {
@@ -378,6 +472,7 @@ esp_err_t serial_cli_init(void)
         .argtable = &tg_token_args,
     };
     esp_console_cmd_register(&tg_token_cmd);
+#endif
 
     /* set_api_key */
     api_key_args.key = arg_str1(NULL, NULL, "<key>", "LLM API key");
@@ -395,7 +490,7 @@ esp_err_t serial_cli_init(void)
     model_args.end = arg_end(1);
     esp_console_cmd_t model_cmd = {
         .command = "set_model",
-        .help = "Set LLM model (default: " MIMI_LLM_DEFAULT_MODEL ")",
+        .help = "Set LLM model (default: " CFG_LLM_DEFAULT_MODEL ")",
         .func = &cmd_set_model,
         .argtable = &model_args,
     };
@@ -406,7 +501,7 @@ esp_err_t serial_cli_init(void)
     provider_args.end = arg_end(1);
     esp_console_cmd_t provider_cmd = {
         .command = "set_model_provider",
-        .help = "Set LLM model provider (default: " MIMI_LLM_PROVIDER_DEFAULT ")",
+        .help = "Set LLM model provider (default: " CFG_LLM_DEFAULT_PROVIDER ")",
         .func = &cmd_set_model_provider,
         .argtable = &provider_args,
     };

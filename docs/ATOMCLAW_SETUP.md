@@ -4,6 +4,7 @@ AtomClawはESP32-S3（8MB Flash）上で動作するDiscord連携AIエージェ�
 Discordのスラッシュコマンドで会話し、オプションでCloudflare KVに会話履歴を保存します。
 
 > **デバイスへの書き込み手順**（ビルド・フラッシュ）は [DEVICE_SETUP.md](DEVICE_SETUP.md) を参照してください。
+> 命名移行メモ（MimiClaw -> AtomClaw）は [NAMING_NOTES.md](NAMING_NOTES.md) を参照してください。
 
 ---
 

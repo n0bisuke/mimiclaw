@@ -200,7 +200,12 @@ static void atom_agent_task(void *arg)
         strncpy(out.chat_id, msg.chat_id, sizeof(out.chat_id) - 1);
         strncpy(out.meta,    msg.meta,    sizeof(out.meta) - 1);
         out.content = strdup(response_text);
-        if (out.content) message_bus_push_outbound(&out);
+        if (out.content) {
+            if (message_bus_push_outbound(&out) != ESP_OK) {
+                ESP_LOGW(TAG, "Outbound queue full, dropping response");
+                free(out.content);
+            }
+        }
 
         /* 10. Async CF save (both turns) — CF mode only */
         if (cf_ok) {
@@ -229,7 +234,7 @@ static void atom_agent_task(void *arg)
                 cJSON *sum_msgs = cJSON_Parse(sum_history);
                 if (!sum_msgs) sum_msgs = cJSON_CreateArray();
 
-                llm_response_t sum_resp;
+                llm_response_t sum_resp = {0};
                 if (llm_chat_tools(sum_system, sum_msgs, NULL, &sum_resp) == ESP_OK
                     && sum_resp.text && sum_resp.text_len > 0) {
                     /* 要約を Cloudflare KV に保存 */
@@ -328,14 +333,20 @@ void app_main(void)
             ESP_ERROR_CHECK(discord_server_start());
 
             /* Start agent loop */
-            xTaskCreatePinnedToCore(atom_agent_task, "atom_agent",
-                                    ATOM_AGENT_STACK, NULL,
-                                    ATOM_AGENT_PRIO, NULL, ATOM_AGENT_CORE);
+            BaseType_t agent_ok = xTaskCreatePinnedToCore(atom_agent_task, "atom_agent",
+                                                           ATOM_AGENT_STACK, NULL,
+                                                           ATOM_AGENT_PRIO, NULL, ATOM_AGENT_CORE);
 
             /* Start outbound dispatcher */
-            xTaskCreatePinnedToCore(outbound_dispatch_task, "outbound",
-                                    ATOM_OUTBOUND_STACK, NULL,
-                                    ATOM_OUTBOUND_PRIO, NULL, ATOM_OUTBOUND_CORE);
+            BaseType_t out_ok = xTaskCreatePinnedToCore(outbound_dispatch_task, "outbound",
+                                                         ATOM_OUTBOUND_STACK, NULL,
+                                                         ATOM_OUTBOUND_PRIO, NULL, ATOM_OUTBOUND_CORE);
+            if (agent_ok != pdPASS || out_ok != pdPASS) {
+                ESP_LOGE(TAG, "Failed to create tasks: agent=%d outbound=%d",
+                         (int)agent_ok, (int)out_ok);
+                rgb_set(255, 0, 0);
+                return;
+            }
 
             ESP_LOGI(TAG, "AtomClaw ready! Discord interaction endpoint: "
                           "http://%s%s",
